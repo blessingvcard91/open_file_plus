@@ -94,6 +94,7 @@ public class OpenFilePlugin implements MethodCallHandler
                 typeString = getFileType(filePath);
             }
             if (pathRequiresPermission()) {
+                android.util.Log.d("TAG", "onMethodCall: True");
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                     if(!isFileAvailable()){
                         return;
@@ -113,6 +114,7 @@ public class OpenFilePlugin implements MethodCallHandler
                     ActivityCompat.requestPermissions(activity, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, REQUEST_CODE);
                 }
             } else {
+                android.util.Log.d("TAG", "onMethodCall: False");
                 startActivity();
             }
         } else {
@@ -151,20 +153,57 @@ public class OpenFilePlugin implements MethodCallHandler
 //            String appDirCanonicalPath = new File(context.getApplicationInfo().dataDir).getCanonicalPath();
 //            String fileCanonicalPath = new File(filePath).getCanonicalPath();
 //            return !fileCanonicalPath.startsWith(appDirCanonicalPath);
-            String appDirFilePath = context.getExternalFilesDir(null).getCanonicalPath();
-            String appDirCachePath = context.getExternalCacheDir().getCanonicalPath();
-            String fileCanonicalPath = new File(filePath).getCanonicalPath();
-            if (fileCanonicalPath.startsWith(appDirFilePath)) {
-                return false;
-            } else if (fileCanonicalPath.startsWith(appDirCachePath)) {
-                return false;
+//            String appDirFilePath = context.getExternalFilesDir(null).getCanonicalPath();
+//            String appDirCachePath = context.getExternalCacheDir().getCanonicalPath();
+//            String fileCanonicalPath = new File(filePath).getCanonicalPath();
+//            android.util.Log.d("TAG", "pathRequiresPermission: fileCanonicalPath --> " + fileCanonicalPath);
+//            android.util.Log.d("TAG", "pathRequiresPermission: appDirFilePath --> " + appDirFilePath);
+//            android.util.Log.d("TAG", "pathRequiresPermission: appDirCachePath --> " + appDirCachePath);
+//            if (fileCanonicalPath.startsWith(appDirFilePath)) {
+//                android.util.Log.d("TAG", "pathRequiresPermission: False ");
+//                return false;
+//            } else if (fileCanonicalPath.startsWith(appDirCachePath)) {
+//                android.util.Log.d("TAG", "pathRequiresPermission: False ");
+//                return false;
+//            } else {
+//                android.util.Log.d("TAG", "pathRequiresPermission: True ");
+//                return false;
+//            }
+
+
+            File file = new File(filePath).getCanonicalFile();
+
+            // Internal directories
+            File internalFilesDir = context.getFilesDir().getCanonicalFile();
+            File internalCacheDir = context.getCacheDir().getCanonicalFile();
+
+            // External directories
+            File externalFilesDir = context.getExternalFilesDir(null).getCanonicalFile();
+            File externalCacheDir = context.getExternalCacheDir().getCanonicalFile();
+
+            if (isFileInsideDir(file, internalFilesDir) ||
+                    isFileInsideDir(file, internalCacheDir) ||
+                    isFileInsideDir(file, externalFilesDir) ||
+                    isFileInsideDir(file, externalCacheDir)) {
+//                android.util.Log.d("TAG", "pathRequiresPermission: False (inside app storage)");
+                return false; // No MANAGE_EXTERNAL_STORAGE needed
             } else {
-                return true;
+//                android.util.Log.d("TAG", "pathRequiresPermission: True (outside app storage)");
+                return true; // Permission would be needed
             }
         } catch (IOException e) {
             e.printStackTrace();
             return true;
         }
+    }
+
+    private boolean isFileInsideDir(File file, File dir) {
+        File parent = file;
+        while (parent != null) {
+            if (parent.equals(dir)) return true;
+            parent = parent.getParentFile();
+        }
+        return false;
     }
 
     private boolean isFileAvailable(){
